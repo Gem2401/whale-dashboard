@@ -715,6 +715,24 @@
 
   </div>
 
+  <!-- AI PORTFOLIO ADVISOR -->
+  <div id="aiAdviceCard" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">🤖 AI PORTFOLIO ADVISOR</div>
+        <div style="font-size:12px;color:var(--muted)">Phân tích dựa trên lệnh & tài sản thực tế của bạn</div>
+      </div>
+      <div id="aiHealthBadge" style="text-align:center">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">SỨC KHOẺ DANH MỤC</div>
+        <div id="aiHealthScore" style="font-size:36px;font-weight:800;line-height:1">—</div>
+        <div id="aiHealthLabel" style="font-size:11px;font-weight:600;margin-top:2px">Đang phân tích...</div>
+      </div>
+    </div>
+    <div id="aiAdviceContent">
+      <div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center">Thêm lệnh hoặc tài sản để nhận lời khuyên từ AI</div>
+    </div>
+  </div>
+
   <!-- LỊCH SỬ LỆNH ĐÃ ĐÓNG -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px">
     <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:16px">📜 Lịch sử lệnh đã đóng</div>
@@ -1440,6 +1458,7 @@
     const fgVal = fgR.status === 'fulfilled' ? Number(fgR.value[0].value) : 15;
     const usdvndVal = vndR.status === 'fulfilled' ? vndR.value : null;
     if (usdvndVal) liveData.usdvnd = usdvndVal;
+    if (fgR.status === 'fulfilled') liveData.fgi = Number(fgR.value[0].value);
 
     if (fgR.status === 'fulfilled') {
       updateFG(fgR.value);
@@ -1480,7 +1499,7 @@
   // ══════════════════════════════════════════════════════
   const PF_KEY = 'whale_positions';
   const HD_KEY = 'whale_holdings';
-  const liveData = { btcPrice: 0, goldPrice: 0, usdvnd: 25500 };
+  const liveData = { btcPrice: 0, goldPrice: 0, usdvnd: 25500, fgi: 25 };
   let allocChartObj = null;
 
   // ── Storage helpers ──
@@ -1839,6 +1858,9 @@
           <span style="font-size:12px;color:var(--muted)">Tổng P&L: <strong class="${realPL>=0?'pl-pos':'pl-neg'}">${realPL>=0?'+':''} $${Math.abs(realPL).toLocaleString('en-US',{maximumFractionDigits:0})}</strong></span>
         </div>`;
     }
+
+    // Render AI advice after all sections are built
+    renderAIAdvice();
   }
 
   function renderAllocChart(holdings, totalVal) {
@@ -1860,6 +1882,164 @@
         cutout: '58%'
       }
     });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // AI PORTFOLIO ADVISOR
+  // ══════════════════════════════════════════════════════
+  function renderAIAdvice() {
+    const positions = getPositions();
+    const holdings  = getHoldings();
+    const open      = positions.filter(p => p.status === 'open');
+    const closed    = positions.filter(p => p.status === 'closed');
+
+    const btcPrice   = liveData.btcPrice || 71500;
+    const fgi        = liveData.fgi || 25;
+    const usdvnd     = liveData.usdvnd || 25500;
+    const btcFromATH = (btcPrice - BTC_ATH) / BTC_ATH * 100;
+    const totalUSD   = holdings.reduce((s, h) => s + holdingValueUSD(h), 0);
+
+    const tips = [];   // { level: 'good'|'warn'|'danger'|'info', title, body }
+    let health = 100;
+
+    // ─── 1. PHÂN TÍCH TỪNG LỆNH MỞ ─────────────────────
+    if (open.length === 0) {
+      tips.push({ level: 'info', title: 'Chưa có lệnh nào đang mở',
+        body: fgi <= 25
+          ? `FGI hiện tại = <strong>${fgi} (Extreme Fear)</strong> — đây là vùng chiến lược của bạn. Cân nhắc mở LONG BTC theo kế hoạch.`
+          : `FGI = <strong>${fgi}</strong>, chưa đến vùng Extreme Fear (< 25). Tiếp tục quan sát và chờ tín hiệu.` });
+    } else {
+      open.forEach(p => {
+        const cp  = posCurrentPrice(p);
+        const pl  = p.direction === 'LONG' ? (cp - p.entryPrice) * p.qty : (p.entryPrice - cp) * p.qty;
+        const pct = (pl / (p.entryPrice * p.qty)) * 100;
+        const daysHeld = p.entryDate ? Math.round((Date.now() - new Date(p.entryDate)) / 86400000) : 0;
+        const sign = pl >= 0 ? '+' : '';
+
+        if (p.direction === 'LONG') {
+          // Chiến lược: LONG tại Extreme Fear, hold đến ATH
+          if (pl < 0 && pct < -20) {
+            health -= 15;
+            tips.push({ level: 'warn', title: `⚠️ LONG ${p.asset} đang lỗ ${pct.toFixed(1)}%`,
+              body: `Giá vào <strong>$${Number(p.entryPrice).toLocaleString()}</strong>, hiện tại <strong>$${Number(cp).toLocaleString('en-US',{maximumFractionDigits:0})}</strong> (${sign}${pct.toFixed(1)}%). Chiến lược của bạn là nắm dài hạn theo chu kỳ — <strong>không cắt lỗ</strong> nếu luận điểm vẫn còn (halving cycle, FGI thấp). Xem lại nếu BTC phá đáy $45K.` });
+          } else if (pl > 0 && pct > 30) {
+            tips.push({ level: 'good', title: `✅ LONG ${p.asset} đang lãi ${sign}${pct.toFixed(1)}%`,
+              body: `Đang lãi <strong>${sign}$${Math.abs(pl).toLocaleString('en-US',{maximumFractionDigits:0})}</strong> sau ${daysHeld} ngày. ${fgi >= 75 ? `<strong style="color:var(--red)">FGI đã lên ${fgi} — bắt đầu theo dõi trigger SHORT (FGI ≥ 80 + BTC > $${(BTC_ATH/1000).toFixed(0)}K).</strong>` : `FGI = ${fgi}, chưa đến vùng SHORT. Tiếp tục giữ.`}` });
+          } else {
+            tips.push({ level: 'info', title: `📊 LONG ${p.asset}: ${sign}${pct.toFixed(1)}% sau ${daysHeld} ngày`,
+              body: `Giá vào <strong>$${Number(p.entryPrice).toLocaleString()}</strong> → giá TT <strong>$${Number(cp).toLocaleString('en-US',{maximumFractionDigits:0})}</strong>. P&L: <strong class="${pl>=0?'pl-pos':'pl-neg'}">${sign}$${Math.abs(pl).toLocaleString('en-US',{maximumFractionDigits:0})}</strong>. Chiến lược đang đúng hướng.` });
+          }
+
+          // Cảnh báo leverage
+          if (p.leverage > 1) {
+            health -= 10;
+            tips.push({ level: 'danger', title: `🚨 Đòn bẩy ×${p.leverage} — rủi ro cao`,
+              body: `Lệnh LONG ${p.asset} đang dùng đòn bẩy ×${p.leverage}. Chiến lược bảo toàn tài sản của bạn <strong>không phù hợp với leverage</strong>. Một biến động -${(100/p.leverage).toFixed(0)}% là thanh lý toàn bộ. Cân nhắc đóng và mở lại spot.` });
+          }
+
+        } else { // SHORT
+          if (btcFromATH < -10) {
+            health -= 10;
+            tips.push({ level: 'warn', title: `⚠️ SHORT ${p.asset} — BTC đang cách ATH ${btcFromATH.toFixed(1)}%`,
+              body: `SHORT lý tưởng khi BTC ≥ ATH + FGI ≥ 80. Hiện BTC còn <strong>${Math.abs(btcFromATH).toFixed(1)}% dưới ATH</strong> — vị thế SHORT này có thể sớm hơn so với chiến lược. Kiểm tra lại lý do vào lệnh.` });
+          } else if (btcFromATH >= -5) {
+            tips.push({ level: 'good', title: `✅ SHORT ${p.asset} — đang tiếp cận ATH zone`,
+              body: `BTC chỉ còn <strong>${Math.abs(btcFromATH).toFixed(1)}%</strong> cách ATH. FGI = ${fgi}. ${fgi >= 75 ? 'Tâm lý thị trường đang Greed — SHORT zone đang hội tụ.' : 'Theo dõi FGI, khi vượt 80 là xác nhận đỉnh.'}` });
+          } else {
+            tips.push({ level: 'info', title: `📊 SHORT ${p.asset}: ${(pl>=0?'+':'')}${((pl/(p.entryPrice*p.qty))*100).toFixed(1)}%`,
+              body: `P&L: <strong class="${pl>=0?'pl-pos':'pl-neg'}">${pl>=0?'+':''} $${Math.abs(pl).toLocaleString('en-US',{maximumFractionDigits:0})}</strong>. Tiếp tục theo dõi.` });
+          }
+        }
+      });
+    }
+
+    // ─── 2. PHÂN BỔ DANH MỤC ────────────────────────────
+    if (holdings.length > 0 && totalUSD > 0) {
+      const cryptoUSD   = holdings.filter(h => ['BTC','ETH','USDT','OTHER'].includes(h.asset)).reduce((s,h)=>s+holdingValueUSD(h),0);
+      const stableUSD   = holdings.filter(h => ['USDT'].includes(h.asset)).reduce((s,h)=>s+holdingValueUSD(h),0);
+      const depositUSD  = holdings.filter(h => ['VND','DEPOSIT_VND'].includes(h.asset)).reduce((s,h)=>s+holdingValueUSD(h),0);
+      const btcHolding  = holdings.find(h => h.asset === 'BTC');
+      const btcAllocPct = btcHolding ? (holdingValueUSD(btcHolding) / totalUSD * 100) : 0;
+      const idleCash    = holdings.filter(h => h.asset === 'USDT' && !h.rate).reduce((s,h)=>s+holdingValueUSD(h),0);
+
+      if (btcAllocPct > 70) {
+        health -= 10;
+        tips.push({ level: 'warn', title: `⚠️ BTC chiếm ${btcAllocPct.toFixed(0)}% danh mục — tập trung cao`,
+          body: `Tỷ trọng BTC quá cao. Với chiến lược bảo toàn tài sản, nên giữ <strong>phần chờ SHORT ở tiết kiệm</strong> (8.4%/năm) thay vì all-in BTC. Mục tiêu: BTC ≤ 60% tổng danh mục.` });
+      }
+
+      if (idleCash > 1000) {
+        health -= 5;
+        tips.push({ level: 'warn', title: `💤 $${idleCash.toLocaleString('en-US',{maximumFractionDigits:0})} USDT đang nhàn rỗi`,
+          body: `Tiền idle không sinh lãi đang bào mòn purchasing power. Chuyển sang <strong>OCB online 8.4%/năm</strong> hoặc <strong>Cake by VPBank 8.2%</strong> trong khi chờ tín hiệu.` });
+      }
+
+      if (depositUSD > 0) {
+        const depositHoldings = holdings.filter(h => (h.asset === 'VND' || h.asset === 'DEPOSIT_VND') && h.rate > 0);
+        if (depositHoldings.length > 0) {
+          const avgRate = depositHoldings.reduce((s,h) => s + h.rate, 0) / depositHoldings.length;
+          tips.push({ level: 'good', title: `✅ Tiền gửi đang sinh lãi ~${avgRate.toFixed(1)}%/năm`,
+            body: `$${depositUSD.toLocaleString('en-US',{maximumFractionDigits:0})} đang gửi ngân hàng (~${(depositUSD/totalUSD*100).toFixed(0)}% danh mục). Đây là tiền chờ SHORT, chiến lược đúng — tiền idle phải làm việc.` });
+        }
+      }
+    }
+
+    // ─── 3. CHIẾN LƯỢC TỔNG THỂ ─────────────────────────
+    const macroFactor = MACRO_STATIC.btc_halving_months_ago;
+    if (fgi <= 25 && btcFromATH <= -35) {
+      tips.push({ level: 'good', title: `🎯 Thị trường đang trong VÙNG LONG tối ưu`,
+        body: `FGI = <strong>${fgi}</strong> + BTC giảm <strong>${Math.abs(btcFromATH).toFixed(0)}%</strong> từ ATH + tháng thứ <strong>${macroFactor}</strong> sau halving. Đây là bộ ba tín hiệu tốt nhất trong chiến lược của bạn. ${open.filter(p=>p.direction==='LONG').length === 0 ? '<strong style="color:var(--green)">Bạn CHƯA có lệnh LONG — đây là thời điểm cân nhắc hành động.</strong>' : 'Lệnh LONG đang mở — tiếp tục DCA nếu còn budget.'}` });
+    } else if (fgi >= 75 && btcFromATH >= -10) {
+      tips.push({ level: 'warn', title: `🔔 Đang tiếp cận VÙNG SHORT — theo dõi sát`,
+        body: `FGI = <strong>${fgi}</strong>, BTC cách ATH <strong>${Math.abs(btcFromATH).toFixed(1)}%</strong>. Trigger SHORT của bạn: FGI ≥ 80 + BTC > $${(BTC_ATH/1000).toFixed(0)}K. <strong>Chuẩn bị sẵn plan đóng LONG và mở SHORT.</strong>` });
+    }
+
+    // Win rate analysis
+    if (closed.length >= 3) {
+      const wins = closed.filter(p => (p.realizedPL || 0) > 0).length;
+      const winRate = wins / closed.length * 100;
+      const totalRealPL = closed.reduce((s,p) => s+(p.realizedPL||0), 0);
+      if (winRate < 50) {
+        health -= 10;
+        tips.push({ level: 'warn', title: `📉 Win rate ${winRate.toFixed(0)}% — cần xem lại entry rules`,
+          body: `Trong ${closed.length} lệnh đã đóng, chỉ thắng ${wins}. Với chiến lược 1 LONG + 1 SHORT/chu kỳ, <strong>quality over quantity</strong> — mỗi lệnh phải có đủ điều kiện (FGI + BTC distance + halving phase).` });
+      } else if (winRate >= 70) {
+        tips.push({ level: 'good', title: `🏆 Win rate ${winRate.toFixed(0)}% — chiến lược đang hiệu quả`,
+          body: `${wins}/${closed.length} lệnh thắng. Tổng P&L thực: <strong class="${totalRealPL>=0?'pl-pos':'pl-neg'}">${totalRealPL>=0?'+':''} $${Math.abs(totalRealPL).toLocaleString('en-US',{maximumFractionDigits:0})}</strong>. Tiếp tục kỷ luật theo kế hoạch.` });
+      }
+    }
+
+    // ─── HEALTH SCORE ────────────────────────────────────
+    health = Math.max(0, Math.min(100, health));
+    const healthColor = health >= 80 ? 'var(--green)' : health >= 55 ? 'var(--yellow)' : 'var(--red)';
+    const healthLabel = health >= 80 ? 'Tốt ✅' : health >= 55 ? 'Cần chú ý ⚠️' : 'Rủi ro 🚨';
+
+    document.getElementById('aiHealthScore').textContent = health;
+    document.getElementById('aiHealthScore').style.color = healthColor;
+    document.getElementById('aiHealthLabel').textContent = healthLabel;
+    document.getElementById('aiHealthLabel').style.color = healthColor;
+
+    // ─── RENDER TIPS ─────────────────────────────────────
+    if (tips.length === 0) {
+      document.getElementById('aiAdviceContent').innerHTML =
+        '<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center">Thêm lệnh hoặc tài sản để nhận lời khuyên cá nhân hoá.</div>';
+      return;
+    }
+
+    const levelStyle = {
+      good:   { bg:'rgba(34,197,94,0.07)',   border:'rgba(34,197,94,0.2)',   icon:'✅', color:'var(--green)' },
+      warn:   { bg:'rgba(234,179,8,0.07)',   border:'rgba(234,179,8,0.2)',   icon:'⚠️', color:'var(--yellow)' },
+      danger: { bg:'rgba(239,68,68,0.07)',   border:'rgba(239,68,68,0.2)',   icon:'🚨', color:'var(--red)' },
+      info:   { bg:'rgba(59,130,246,0.07)',  border:'rgba(59,130,246,0.2)',  icon:'💡', color:'var(--blue)' },
+    };
+
+    document.getElementById('aiAdviceContent').innerHTML = tips.map(t => {
+      const s = levelStyle[t.level];
+      return `<div style="background:${s.bg};border:1px solid ${s.border};border-radius:10px;padding:14px 16px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:${s.color};margin-bottom:5px">${t.title}</div>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.65">${t.body}</div>
+      </div>`;
+    }).join('');
   }
 </script>
 </body>
