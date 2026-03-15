@@ -1147,37 +1147,25 @@
       d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
-  // ── FETCH BTC (CoinGecko) ──
+  // ── FETCH BTC — Binance primary, CoinGecko fallback ──
   async function fetchBTC() {
-    const r = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true',
-      { cache: 'no-store' }
-    );
-    const d = await r.json();
-    return d.bitcoin;
-  }
-
-  // ── FETCH BTC 7D (CoinGecko với retry) ──
-  async function fetchBTC7D() {
-    // Thử CoinGecko trước
     try {
-      const r = await fetch(
-        'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7&interval=hourly',
-        { cache: 'no-store' }
-      );
-      if (!r.ok) throw new Error('rate limit');
+      const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', { cache: 'no-store' });
+      if (!r.ok) throw new Error('binance err');
       const d = await r.json();
-      if (d.prices && d.prices.length > 0) return d.prices;
-      throw new Error('no data');
+      return {
+        usd: parseFloat(d.lastPrice),
+        usd_24h_change: parseFloat(d.priceChangePercent),
+        usd_24h_vol: parseFloat(d.quoteVolume)
+      };
     } catch(e) {
-      // Fallback: dùng data 7 ngày từ CoinGecko v2
-      const r2 = await fetch(
-        'https://api.coingecko.com/api/v3/coins/bitcoin/ohlc?vs_currency=usd&days=7',
+      // Fallback: CoinGecko
+      const r = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true',
         { cache: 'no-store' }
       );
-      const d2 = await r2.json();
-      // ohlc trả về [time, open, high, low, close]
-      return d2.map(c => [c[0], c[4]]);
+      const d = await r.json();
+      return d.bitcoin;
     }
   }
 
@@ -1188,20 +1176,26 @@
     return d.data;
   }
 
-  // ── FETCH GOLD (dùng PAX Gold trên CoinGecko — không bị CORS) ──
+  // ── FETCH GOLD — Binance PAXG primary, CoinGecko fallback ──
   async function fetchGold() {
-    // PAXG = PAX Gold, 1 PAXG = 1 troy oz vàng
-    const r = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true',
-      { cache: 'no-store' }
-    );
-    const d = await r.json();
-    const paxg = d['pax-gold'];
-    return {
-      price: paxg.usd,
-      change: paxg.usd_24h_change,
-      prev_close_price: paxg.usd / (1 + paxg.usd_24h_change / 100)
-    };
+    try {
+      const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT', { cache: 'no-store' });
+      if (!r.ok) throw new Error('binance err');
+      const d = await r.json();
+      return {
+        price: parseFloat(d.lastPrice),
+        change: parseFloat(d.priceChangePercent)
+      };
+    } catch(e) {
+      // Fallback: CoinGecko PAXG
+      const r = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true',
+        { cache: 'no-store' }
+      );
+      const d = await r.json();
+      const paxg = d['pax-gold'];
+      return { price: paxg.usd, change: paxg.usd_24h_change };
+    }
   }
 
   // ── FETCH USD/VND ──
