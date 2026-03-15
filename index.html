@@ -194,6 +194,30 @@
     .signal-bar.green { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); }
     .signal-bar.yellow { background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.2); }
 
+    /* FACTOR CARDS */
+    .factor-card {
+      background: var(--surface2); border-radius: 10px; padding: 12px;
+      border-left: 3px solid;
+    }
+    .factor-card.bull { border-color: var(--green); }
+    .factor-card.bear { border-color: var(--red); }
+    .factor-card.neutral { border-color: var(--muted); }
+    .factor-name { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .factor-val { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .factor-impact { font-size: 10px; }
+
+    /* MACRO ITEMS */
+    .macro-item { display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid rgba(37,42,58,0.5); font-size:12px; }
+    .macro-item:last-child { border-bottom: none; }
+    .macro-label { color: var(--muted); }
+    .macro-val { font-weight: 600; }
+
+    /* ANALYSIS NARRATIVE */
+    .narrative { font-size: 12px; line-height: 1.7; color: #94a3b8; }
+    .narrative strong { color: var(--text); }
+
+    @media(max-width:768px){ #factorGrid{grid-template-columns:repeat(2,1fr) !important} }
+
     /* ERROR */
     .api-error { font-size: 11px; color: var(--red); display: none; }
 
@@ -285,17 +309,18 @@
 
   <div class="chart-card">
     <h2>
-      <span>BTC Giá theo thời gian thực (7 ngày)</span>
+      <span>Chu kỳ BTC — Chiến lược vào lệnh</span>
       <div class="chart-tabs">
-        <button class="chart-tab active" onclick="switchChart('btc',this)">BTC 7D</button>
+        <button class="chart-tab active" onclick="switchChart('btc',this)">Chu kỳ</button>
         <button class="chart-tab" onclick="switchChart('fg',this)">F&G History</button>
       </div>
     </h2>
     <canvas id="btcChart" height="100"></canvas>
     <canvas id="fgChart" height="100" style="display:none"></canvas>
     <div style="display:flex;gap:20px;margin-top:12px;font-size:11px;color:var(--muted)">
-      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block"></span>Vùng LONG (Extreme Fear FGI &lt; 25)</span>
-      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block"></span>Vùng SHORT (ATH / FGI &gt; 80)</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block"></span>Vùng LONG (Extreme Fear)</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block"></span>Vùng SHORT (ATH)</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#f7931a;display:inline-block"></span>Giá BTC</span>
     </div>
   </div>
 
@@ -387,72 +412,137 @@
   </div>
 </div>
 
-<!-- ROW 4: STRATEGY -->
-<div class="strategy-card">
-  <h2>Phân tích chiến lược: 1 LONG (Extreme Fear) + 1 SHORT (ATH) / chu kỳ</h2>
+<!-- ROW 4: AI MACRO ANALYSIS ENGINE -->
+<div id="analysisSection" style="margin-bottom:20px">
 
-  <div style="position:relative;margin-bottom:28px">
-    <div class="cycle-line"><div class="cycle-line-filled"></div></div>
-    <div class="cycle-viz">
-      <div class="cycle-step">
-        <div class="cycle-dot fear-dot">😨</div>
-        <div class="cycle-label">Extreme Fear</div>
-        <div class="cycle-val" style="color:var(--red)">FGI: 5–25</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">👆 LONG tại đây</div>
-        <div style="margin-top:6px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:6px;padding:6px;font-size:11px;text-align:center">
-          <span style="color:var(--green)" id="currentSignalBox">FGI hiện tại: đang tải...</span>
+  <!-- 4A: OVERALL SCORE -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:20px">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">🧠 AI MACRO ANALYSIS ENGINE</div>
+        <div style="font-size:13px;color:var(--muted)">Tổng hợp đa yếu tố · Cập nhật real-time</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">ĐIỂM TÍCH LŨY</div>
+        <div id="scoreDisplay" style="font-size:48px;font-weight:800;line-height:1">—</div>
+        <div id="scoreLabel" style="font-size:12px;font-weight:600;margin-top:4px">Đang tính...</div>
+      </div>
+    </div>
+
+    <!-- Factor Grid -->
+    <div id="factorGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div class="factor-skeleton" style="height:70px;background:var(--surface2);border-radius:10px;animation:shimmer 1.2s infinite"></div>
+      <div class="factor-skeleton" style="height:70px;background:var(--surface2);border-radius:10px;animation:shimmer 1.2s infinite"></div>
+      <div class="factor-skeleton" style="height:70px;background:var(--surface2);border-radius:10px;animation:shimmer 1.2s infinite"></div>
+      <div class="factor-skeleton" style="height:70px;background:var(--surface2);border-radius:10px;animation:shimmer 1.2s infinite"></div>
+      <div class="factor-skeleton" style="height:70px;background:var(--surface2);border-radius:10px;animation:shimmer 1.2s infinite"></div>
+      <div class="factor-skeleton" style="height:70px;background:var(--surface2);border-radius:10px;animation:shimmer 1.2s infinite"></div>
+    </div>
+  </div>
+
+  <!-- 4B: 3-COL ANALYSIS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+
+    <!-- Global Macro -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        🌍 Vĩ mô toàn cầu
+      </div>
+      <div id="globalMacroContent">
+        <div style="height:120px;background:var(--surface2);border-radius:8px;animation:shimmer 1.2s infinite"></div>
+      </div>
+    </div>
+
+    <!-- Vietnam Impact -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        🇻🇳 Tác động Việt Nam
+      </div>
+      <div id="vietnamContent">
+        <div style="height:120px;background:var(--surface2);border-radius:8px;animation:shimmer 1.2s infinite"></div>
+      </div>
+    </div>
+
+    <!-- Personal Strategy -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        👤 Chiến lược cá nhân
+      </div>
+      <div id="personalContent">
+        <div style="height:120px;background:var(--surface2);border-radius:8px;animation:shimmer 1.2s infinite"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 4C: CYCLE + SCENARIOS -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px">
+    <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:20px">Chu kỳ thị trường & Kịch bản</div>
+
+    <div style="position:relative;margin-bottom:28px">
+      <div class="cycle-line"><div class="cycle-line-filled"></div></div>
+      <div class="cycle-viz">
+        <div class="cycle-step">
+          <div class="cycle-dot fear-dot">😨</div>
+          <div class="cycle-label">Extreme Fear</div>
+          <div class="cycle-val" style="color:var(--red)">FGI &lt; 25</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">👆 LONG tại đây</div>
+          <div style="margin-top:6px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:6px;padding:6px;font-size:11px;text-align:center">
+            <span style="color:var(--green)" id="currentSignalBox">Đang tải...</span>
+          </div>
+        </div>
+        <div class="cycle-step">
+          <div class="cycle-dot neutral-dot">📈</div>
+          <div class="cycle-label">Phục hồi</div>
+          <div class="cycle-val" style="color:var(--muted)">FGI 40–60</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">⏳ Đang chờ</div>
+        </div>
+        <div class="cycle-step">
+          <div class="cycle-dot greed-dot">🚀</div>
+          <div class="cycle-label">Bull Peak / ATH</div>
+          <div class="cycle-val" style="color:var(--yellow)">FGI &gt; 80</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">👇 SHORT tại đây</div>
         </div>
       </div>
-      <div class="cycle-step">
-        <div class="cycle-dot neutral-dot">📈</div>
-        <div class="cycle-label">Phục hồi</div>
-        <div class="cycle-val" style="color:var(--muted)">FGI: 40–60</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">⏳ Đang chờ</div>
+    </div>
+
+    <div class="scenarios" id="scenariosBox">
+      <div class="scenario bull">
+        <div class="scenario-label">🟢 Lạc quan</div>
+        <div class="scenario-return" id="s-bull">+130%</div>
+        <div class="scenario-detail" id="s-bull-detail">LONG $65K → SHORT $150K<br>12–18 tháng</div>
       </div>
-      <div class="cycle-step">
-        <div class="cycle-dot greed-dot">🚀</div>
-        <div class="cycle-label">Bull Peak / ATH</div>
-        <div class="cycle-val" style="color:var(--yellow)">FGI: 75–100</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">👇 SHORT tại đây</div>
+      <div class="scenario base">
+        <div class="scenario-label">🔵 Cơ sở</div>
+        <div class="scenario-return" id="s-base">+71%</div>
+        <div class="scenario-detail" id="s-base-detail">LONG $70K → SHORT $120K<br>18–24 tháng</div>
+      </div>
+      <div class="scenario bear">
+        <div class="scenario-label">🔴 Bi quan</div>
+        <div class="scenario-return" id="s-bear">Rủi ro</div>
+        <div class="scenario-detail" id="s-bear-detail">Không có ATH mới<br>hoặc SHORT quá sớm</div>
+      </div>
+    </div>
+
+    <!-- Opportunity Cost -->
+    <div style="background:var(--surface2);border-radius:10px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div><div style="color:var(--muted);font-size:11px;margin-bottom:4px">Gửi ngân hàng 7.5%/năm × 2 năm (phi rủi ro)</div><div style="font-size:20px;font-weight:700;color:var(--muted)">+15.6%</div></div>
+        <div style="color:var(--muted);font-size:20px">VS</div>
+        <div><div style="color:var(--muted);font-size:11px;margin-bottom:4px">Chiến lược trade (kịch bản cơ sở)</div><div id="tradeReturn" style="font-size:20px;font-weight:700;color:var(--blue)">+71%</div></div>
+        <div><div style="color:var(--muted);font-size:11px;margin-bottom:4px">Alpha so với phi rủi ro</div><div id="alphaReturn" style="font-size:20px;font-weight:700;color:var(--green)">+55.4%</div></div>
       </div>
     </div>
   </div>
 
-  <div class="section-title">Kịch bản lợi nhuận (1 chu kỳ ~2 năm)</div>
-  <div class="scenarios">
-    <div class="scenario bull">
-      <div class="scenario-label">🟢 Lạc quan</div>
-      <div class="scenario-return">+130%</div>
-      <div class="scenario-detail">LONG $65K → SHORT $150K<br>Giữ 12–18 tháng</div>
-    </div>
-    <div class="scenario base">
-      <div class="scenario-label">🔵 Cơ sở</div>
-      <div class="scenario-return">+71%</div>
-      <div class="scenario-detail">LONG $70K → SHORT $120K<br>Giữ 18–24 tháng</div>
-    </div>
-    <div class="scenario bear">
-      <div class="scenario-label">🔴 Bi quan</div>
-      <div class="scenario-return">Rủi ro</div>
-      <div class="scenario-detail">Không có ATH mới<br>hoặc SHORT quá sớm</div>
-    </div>
+  <!-- 4D: ACTION PLAN -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px">
+    <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:16px">⚡ Kế hoạch hành động — Tuần này</div>
+    <ul class="rec-list" id="actionPlan">
+      <li><div class="rec-icon blue">⏳</div><div>Đang phân tích...</div></li>
+    </ul>
   </div>
 
-  <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:20px">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div><div style="color:var(--muted);font-size:11px;margin-bottom:4px">Gửi ngân hàng 7.5%/năm × 2 năm (phi rủi ro)</div><div style="font-size:20px;font-weight:700;color:var(--muted)">+15.6%</div></div>
-      <div style="color:var(--muted);font-size:20px">VS</div>
-      <div><div style="color:var(--muted);font-size:11px;margin-bottom:4px">Chiến lược trade (kịch bản cơ sở)</div><div style="font-size:20px;font-weight:700;color:var(--blue)">+71%</div></div>
-      <div><div style="color:var(--muted);font-size:11px;margin-bottom:4px">Alpha so với phi rủi ro</div><div style="font-size:20px;font-weight:700;color:var(--green)">+55.4%</div></div>
-    </div>
-  </div>
-
-  <div class="section-title">Khuyến nghị hôm nay</div>
-  <ul class="rec-list">
-    <li><div class="rec-icon green">✅</div><div><strong>Vùng LONG hợp lý:</strong> BTC đang trong vùng Extreme Fear kéo dài. Chia 3 lần mua (DCA) thay vì all-in để phòng BTC giảm tiếp về $55–60K.</div></li>
-    <li><div class="rec-icon yellow">💰</div><div><strong>Tiền chờ (phần SHORT):</strong> Gửi OCB hoặc Cake 8.2–8.4%/năm — không để idle, lãi suất phi rủi ro đang rất hấp dẫn.</div></li>
-    <li><div class="rec-icon blue">📐</div><div><strong>Điều kiện SHORT:</strong> FGI ≥ 80 VÀ BTC vượt ATH cũ ($126K) → mới xem xét. Stop loss +15%.</div></li>
-    <li><div class="rec-icon red">⚠️</div><div><strong>Không vay ngân hàng để trade:</strong> Lãi suất 8.5–15%/năm — thanh lý 1 lần là mất toàn bộ.</div></li>
-  </ul>
 </div>
 
 <!-- FOOTER -->
@@ -487,11 +577,250 @@
     return 'Extreme Greed 🤑';
   }
   function fgSignalText(v) {
-    if (v <= 25) return '🔴 EXTREME FEAR — Vùng tích lũy LONG. Đây là cơ hội trong chu kỳ.';
-    if (v <= 45) return '🟠 FEAR — Thị trường còn bi quan. Theo dõi thêm.';
-    if (v <= 55) return '🟡 NEUTRAL — Thị trường cân bằng. Chờ tín hiệu rõ hơn.';
-    if (v <= 75) return '🟢 GREED — Thị trường tham lam. Cân nhắc chốt lời dần.';
-    return '🔥 EXTREME GREED — Vùng cân nhắc SHORT nếu BTC gần ATH!';
+    if (v <= 25) return '😨 Extreme Fear — Thị trường đang rất bi quan';
+    if (v <= 45) return '😟 Fear — Thị trường còn tiêu cực';
+    if (v <= 55) return '😐 Neutral — Tâm lý cân bằng';
+    if (v <= 75) return '😏 Greed — Thị trường đang lạc quan';
+    return '🤑 Extreme Greed — Thị trường đang FOMO mạnh';
+  }
+
+  // ────────────────────────────────────────────
+  // AI MACRO ANALYSIS ENGINE
+  // ────────────────────────────────────────────
+  // Dữ liệu vĩ mô bán tĩnh (tôi cập nhật hàng tuần khi push code)
+  const MACRO_STATIC = {
+    fed_rate: 4.375,        // Fed Funds Rate hiện tại (midpoint 4.25–4.5%)
+    fed_outlook: 'hold',    // 'hold' | 'cut' | 'hike'
+    fed_cuts_2026: 2,       // số lần cắt lãi dự kiến năm 2026
+    dxy: 103.8,             // US Dollar Index
+    dxy_trend: 'down',      // 'up' | 'down' | 'flat'
+    vix: 22.5,              // CBOE VIX
+    spx_change_1m: -3.2,    // S&P 500 % thay đổi 1 tháng
+    macro_driver: 'tariff', // 'tariff' | 'recession' | 'inflation' | 'tightening'
+    // Vietnam
+    sbv_rate: 4.5,          // Lãi suất cơ bản SBV
+    vnd_per_usd: 25500,     // tỷ giá (lấy từ API, fallback này)
+    vn_inflation: 4.2,      // lạm phát VN %
+    vnindex: 1272,          // VN-Index điểm
+    vnindex_change: -1.8,   // % thay đổi 1 tháng
+    deposit_best: 8.4,      // lãi suất gửi tốt nhất
+    // Context
+    btc_cycle_phase: 'accumulation', // 'accumulation' | 'uptrend' | 'distribution' | 'downtrend'
+    btc_halving_months_ago: 11,      // tháng kể từ halving T4/2024
+    btc_extreme_fear_days: 38,       // ngày liên tiếp Extreme Fear
+  };
+
+  function runMacroAnalysis(btcPrice, fgi, goldPrice, usdvnd) {
+    const M = { ...MACRO_STATIC };
+    if (usdvnd) M.vnd_per_usd = usdvnd;
+
+    const btcFromATH = ((btcPrice - BTC_ATH) / BTC_ATH * 100);
+    const opportunityCost = M.deposit_best; // % phi rủi ro tốt nhất
+
+    // ── SCORING ── (điểm dương = bullish cho LONG, âm = bearish)
+    const factors = [];
+
+    // 1. Fear & Greed
+    if (fgi <= 15) {
+      factors.push({ name: 'Fear & Greed', val: `${fgi} — Cực sợ`, impact: '+3 điểm', score: 3, type: 'bull',
+        reason: `FGI ${fgi} — mức thấp lịch sử. Trong quá khứ, mỗi lần FGI < 15 đều là vùng đáy chu kỳ` });
+    } else if (fgi <= 25) {
+      factors.push({ name: 'Fear & Greed', val: `${fgi} — Extreme Fear`, impact: '+2 điểm', score: 2, type: 'bull',
+        reason: `FGI ${fgi} — vùng Extreme Fear. Cơ hội tích lũy dài hạn tốt` });
+    } else if (fgi >= 80) {
+      factors.push({ name: 'Fear & Greed', val: `${fgi} — Extreme Greed`, impact: '-3 điểm', score: -3, type: 'bear',
+        reason: `FGI ${fgi} — FOMO cực độ. Cân nhắc SHORT` });
+    } else {
+      factors.push({ name: 'Fear & Greed', val: `${fgi} — Trung tính`, impact: '0 điểm', score: 0, type: 'neutral',
+        reason: `FGI ${fgi} — chưa đủ tín hiệu` });
+    }
+
+    // 2. BTC so với ATH
+    if (btcFromATH <= -40) {
+      factors.push({ name: 'BTC vs ATH', val: `${btcFromATH.toFixed(1)}% từ ATH`, impact: '+2 điểm', score: 2, type: 'bull',
+        reason: `BTC giảm ${Math.abs(btcFromATH).toFixed(0)}% từ ATH — vùng giảm sâu lịch sử, thường là đáy chu kỳ` });
+    } else if (btcFromATH >= 0) {
+      factors.push({ name: 'BTC vs ATH', val: `ATH mới!`, impact: '-2 điểm', score: -2, type: 'bear',
+        reason: `BTC đang ở ATH mới — rủi ro cao, cân nhắc giảm vị thế` });
+    } else {
+      factors.push({ name: 'BTC vs ATH', val: `${btcFromATH.toFixed(1)}% từ ATH`, impact: '+1 điểm', score: 1, type: 'bull',
+        reason: `BTC còn cách ATH ${Math.abs(btcFromATH).toFixed(0)}%` });
+    }
+
+    // 3. Fed Policy
+    if (M.fed_outlook === 'cut') {
+      factors.push({ name: 'Fed Policy', val: `${M.fed_rate}% — Đang cắt`, impact: '+2 điểm', score: 2, type: 'bull',
+        reason: `Fed cắt lãi suất = tiền rẻ hơn = dòng tiền chảy vào tài sản rủi ro` });
+    } else if (M.fed_outlook === 'hold') {
+      factors.push({ name: 'Fed Policy', val: `${M.fed_rate}% — Giữ nguyên`, impact: '-1 điểm', score: -1, type: 'bear',
+        reason: `Fed giữ lãi suất cao ${M.fed_rate}% — dòng tiền ưu tiên trái phiếu/tiền gửi thay vì crypto. Dự kiến cắt ${M.fed_cuts_2026} lần trong 2026 là tín hiệu tích cực trung hạn` });
+    } else {
+      factors.push({ name: 'Fed Policy', val: `${M.fed_rate}% — Đang tăng`, impact: '-3 điểm', score: -3, type: 'bear',
+        reason: `Fed tăng lãi suất = môi trường tệ nhất cho tài sản rủi ro` });
+    }
+
+    // 4. DXY (USD)
+    if (M.dxy > 106) {
+      factors.push({ name: 'USD (DXY)', val: `${M.dxy} — Rất mạnh`, impact: '-2 điểm', score: -2, type: 'bear',
+        reason: `USD quá mạnh (DXY ${M.dxy}) gây áp lực lớn lên BTC và tài sản rủi ro toàn cầu` });
+    } else if (M.dxy_trend === 'down') {
+      factors.push({ name: 'USD (DXY)', val: `${M.dxy} — Đang yếu dần`, impact: '+1 điểm', score: 1, type: 'bull',
+        reason: `DXY ${M.dxy} đang giảm → đồng USD yếu dần → tích cực cho crypto và hàng hóa` });
+    } else {
+      factors.push({ name: 'USD (DXY)', val: `${M.dxy} — Ổn định`, impact: '0 điểm', score: 0, type: 'neutral',
+        reason: `DXY ${M.dxy} — tác động trung tính` });
+    }
+
+    // 5. Halving Cycle
+    const halvingMonths = M.btc_halving_months_ago;
+    if (halvingMonths >= 6 && halvingMonths <= 18) {
+      factors.push({ name: 'Halving Cycle', val: `+${halvingMonths} tháng`, impact: '+3 điểm', score: 3, type: 'bull',
+        reason: `BTC đang ở tháng thứ ${halvingMonths} sau halving (T4/2024). Lịch sử: bull run mạnh nhất thường xảy ra tháng 12–24 sau halving` });
+    } else if (halvingMonths > 18 && halvingMonths <= 30) {
+      factors.push({ name: 'Halving Cycle', val: `+${halvingMonths} tháng`, impact: '+1 điểm', score: 1, type: 'bull',
+        reason: `Tháng ${halvingMonths} sau halving — vẫn trong chu kỳ bull nhưng gần đỉnh` });
+    } else {
+      factors.push({ name: 'Halving Cycle', val: `+${halvingMonths} tháng`, impact: '-1 điểm', score: -1, type: 'bear',
+        reason: `Quá xa halving — chu kỳ bear có thể đang bắt đầu` });
+    }
+
+    // 6. Chi phí cơ hội VN
+    if (opportunityCost >= 8) {
+      factors.push({ name: 'Chi phí cơ hội VN', val: `${opportunityCost}%/năm phi rủi ro`, impact: '-1 điểm', score: -1, type: 'bear',
+        reason: `Lãi suất tiền gửi ${opportunityCost}%/năm rất hấp dẫn — phần tiền chờ SHORT nhất định phải gửi ngân hàng, không để idle` });
+    } else {
+      factors.push({ name: 'Chi phí cơ hội VN', val: `${opportunityCost}%/năm phi rủi ro`, impact: '0 điểm', score: 0, type: 'neutral',
+        reason: `Lãi suất gửi tiền bình thường` });
+    }
+
+    // ── TỔNG ĐIỂM ──
+    const totalScore = factors.reduce((s, f) => s + f.score, 0);
+    const maxScore = 14;
+    const pct = Math.round(((totalScore + maxScore) / (maxScore * 2)) * 100);
+
+    // ── VERDICT ──
+    let verdict, verdictColor, verdictIcon;
+    if (totalScore >= 7) { verdict = 'MUA MẠNH'; verdictColor = '#22c55e'; verdictIcon = '🚀'; }
+    else if (totalScore >= 4) { verdict = 'TÍCH LŨY DCA'; verdictColor = '#22c55e'; verdictIcon = '✅'; }
+    else if (totalScore >= 1) { verdict = 'THẬN TRỌNG TÍCH LŨY'; verdictColor = '#eab308'; verdictIcon = '⚠️'; }
+    else if (totalScore >= -2) { verdict = 'QUAN SÁT'; verdictColor = '#f97316'; verdictIcon = '👀'; }
+    else { verdict = 'GIỮ CASH'; verdictColor = '#ef4444'; verdictIcon = '🛡️'; }
+
+    // ── KỊCH BẢN (động theo giá hiện tại) ──
+    const longPrice = Math.round(btcPrice / 1000) * 1000;
+    const bullTarget = Math.round(BTC_ATH * 1.2 / 1000) * 1000;  // 120% ATH
+    const baseTarget = Math.round(BTC_ATH * 0.95 / 1000) * 1000; // 95% ATH
+    const bullReturn = Math.round((bullTarget - longPrice) / longPrice * 100);
+    const baseReturn = Math.round((baseTarget - longPrice) / longPrice * 100);
+
+    return { factors, totalScore, pct, verdict, verdictColor, verdictIcon, longPrice, bullTarget, baseTarget, bullReturn, baseReturn, M, btcFromATH, opportunityCost };
+  }
+
+  function renderAnalysis(analysis, fgi, usdvnd) {
+    const { factors, totalScore, verdict, verdictColor, verdictIcon, longPrice, bullTarget, baseTarget, bullReturn, baseReturn, M, btcFromATH, opportunityCost } = analysis;
+
+    // Score display
+    document.getElementById('scoreDisplay').textContent = (totalScore > 0 ? '+' : '') + totalScore;
+    document.getElementById('scoreDisplay').style.color = verdictColor;
+    document.getElementById('scoreLabel').innerHTML = `<span style="color:${verdictColor}">${verdictIcon} ${verdict}</span>`;
+
+    // Factor grid
+    document.getElementById('factorGrid').innerHTML = factors.map(f => `
+      <div class="factor-card ${f.type}" title="${f.reason}">
+        <div class="factor-name">${f.name}</div>
+        <div class="factor-val" style="color:${f.type==='bull'?'var(--green)':f.type==='bear'?'var(--red)':'var(--muted)'}">${f.val}</div>
+        <div class="factor-impact" style="color:${f.type==='bull'?'var(--green)':f.type==='bear'?'var(--red)':'var(--muted)'}">${f.impact}</div>
+      </div>
+    `).join('');
+
+    // Global Macro
+    const macroDriver = {
+      tariff: { icon: '🏛️', text: 'Chiến tranh thuế quan Trump (2025–2026): áp thuế 25%+ lên hàng hóa toàn cầu khiến lạm phát dai dẳng, Fed khó cắt lãi suất nhanh.' },
+      recession: { icon: '📉', text: 'Lo ngại suy thoái: các chỉ số kinh tế yếu khiến nhà đầu tư risk-off.' },
+      inflation: { icon: '🔥', text: 'Lạm phát cao: Fed buộc phải giữ lãi suất cao, áp lực lên tài sản rủi ro.' },
+      tightening: { icon: '🏦', text: 'Fed thắt chặt tiền tệ: môi trường khó khăn cho crypto.' }
+    }[M.macro_driver];
+
+    document.getElementById('globalMacroContent').innerHTML = `
+      <div class="macro-item"><span class="macro-label">Fed Funds Rate</span><span class="macro-val" style="color:var(--red)">${M.fed_rate}% (${M.fed_outlook === 'hold' ? 'Giữ nguyên' : M.fed_outlook === 'cut' ? 'Đang cắt' : 'Đang tăng'})</span></div>
+      <div class="macro-item"><span class="macro-label">Dự báo cắt lãi 2026</span><span class="macro-val" style="color:var(--yellow)">${M.fed_cuts_2026} lần (tích cực trung hạn)</span></div>
+      <div class="macro-item"><span class="macro-label">USD Index (DXY)</span><span class="macro-val" style="color:${M.dxy_trend==='down'?'var(--green)':'var(--red)'}">${M.dxy} (${M.dxy_trend==='down'?'Đang yếu ↓':'Đang mạnh ↑'})</span></div>
+      <div class="macro-item"><span class="macro-label">VIX (Sợ hãi CK)</span><span class="macro-val" style="color:${M.vix>30?'var(--red)':M.vix>20?'var(--yellow)':'var(--green)'}">${M.vix} (${M.vix>30?'Cao — risk-off':M.vix>20?'Trung bình':'Thấp — risk-on'})</span></div>
+      <div class="macro-item"><span class="macro-label">S&P 500 (1 tháng)</span><span class="macro-val" style="color:${M.spx_change_1m>=0?'var(--green)':'var(--red)'}">${M.spx_change_1m>0?'+':''}${M.spx_change_1m}%</span></div>
+      <div style="margin-top:12px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);border-radius:8px;padding:10px;font-size:11px;color:#94a3b8;line-height:1.6">
+        ${macroDriver.icon} <strong style="color:var(--text)">Nguyên nhân chính:</strong> ${macroDriver.text}
+      </div>
+    `;
+
+    // Vietnam
+    const usdvndVal = usdvnd ? Math.round(usdvnd).toLocaleString('vi-VN') : M.vnd_per_usd.toLocaleString('vi-VN');
+    const usdvndColor = usdvnd && usdvnd > 25500 ? 'var(--red)' : 'var(--yellow)';
+    document.getElementById('vietnamContent').innerHTML = `
+      <div class="macro-item"><span class="macro-label">Tỷ giá USD/VND</span><span class="macro-val" style="color:${usdvndColor}">${usdvndVal} ₫</span></div>
+      <div class="macro-item"><span class="macro-label">Lãi suất cơ bản SBV</span><span class="macro-val" style="color:var(--yellow)">${M.sbv_rate}%/năm</span></div>
+      <div class="macro-item"><span class="macro-label">Lạm phát VN</span><span class="macro-val" style="color:${M.vn_inflation>4?'var(--yellow)':'var(--green)'}">${M.vn_inflation}%/năm</span></div>
+      <div class="macro-item"><span class="macro-label">VN-Index</span><span class="macro-val" style="color:${M.vnindex_change>=0?'var(--green)':'var(--red)'}">~${M.vnindex} (${M.vnindex_change>0?'+':''}${M.vnindex_change}% tháng)</span></div>
+      <div class="macro-item"><span class="macro-label">Gửi tiết kiệm tốt nhất</span><span class="macro-val" style="color:var(--green)">${M.deposit_best}%/năm (OCB online)</span></div>
+      <div style="margin-top:12px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.15);border-radius:8px;padding:10px;font-size:11px;color:#94a3b8;line-height:1.6">
+        🇻🇳 <strong style="color:var(--text)">Tác động:</strong> USD mạnh làm VND yếu → NHNN chịu áp lực giữ tỷ giá → lãi suất tiền gửi cao để giữ dòng tiền. Với người VN giữ USD mua crypto: lợi thế kép nếu BTC tăng + USD giảm.
+      </div>
+    `;
+
+    // Personal Strategy
+    const phase = fgi <= 25 ? 'TÍCH LŨY (Giai đoạn 1/3)' : fgi <= 50 ? 'PHỤC HỒI (Giai đoạn 2/3)' : fgi <= 75 ? 'TĂNG TRƯỞNG (Giai đoạn 2/3)' : 'ĐỈNH CYCLE (Giai đoạn 3/3)';
+    const phaseColor = fgi <= 25 ? 'var(--green)' : fgi <= 50 ? 'var(--blue)' : fgi <= 75 ? 'var(--yellow)' : 'var(--red)';
+    document.getElementById('personalContent').innerHTML = `
+      <div class="macro-item"><span class="macro-label">Pha hiện tại</span><span class="macro-val" style="color:${phaseColor};font-size:11px">${phase}</span></div>
+      <div class="macro-item"><span class="macro-label">Vị thế LONG</span><span class="macro-val" style="color:var(--green)">Đang xây dựng</span></div>
+      <div class="macro-item"><span class="macro-label">Entry target</span><span class="macro-val" style="color:var(--green)">$55K–$75K (DCA 3 đợt)</span></div>
+      <div class="macro-item"><span class="macro-label">SHORT trigger</span><span class="macro-val" style="color:var(--muted);font-size:11px">FGI ≥ 80 + BTC > $126K</span></div>
+      <div class="macro-item"><span class="macro-label">Tiền chờ SHORT</span><span class="macro-val" style="color:var(--green)">${opportunityCost}%/năm (OCB)</span></div>
+      <div style="margin-top:12px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.15);border-radius:8px;padding:10px;font-size:11px;color:#94a3b8;line-height:1.6">
+        🎯 <strong style="color:var(--text)">Lợi thế chiến lược:</strong> Chỉ 2 lệnh/chu kỳ → tâm lý ổn định, không overtrading. Tiền idle sinh lãi ${opportunityCost}%/năm trong thời gian chờ.
+      </div>
+    `;
+
+    // Cycle signal box
+    document.getElementById('currentSignalBox').textContent = `FGI: ${fgi} — ${fgi <= 25 ? '✅ ĐANG TRONG VÙNG LONG' : fgi >= 80 ? '🔴 VÙNG SHORT TIẾP CẬN' : '⏳ Chờ tín hiệu'}`;
+    document.getElementById('currentSignalBox').style.color = fgi <= 25 ? 'var(--green)' : fgi >= 80 ? 'var(--red)' : 'var(--yellow)';
+
+    // Scenarios (dynamic)
+    document.getElementById('s-bull').textContent = `+${bullReturn}%`;
+    document.getElementById('s-bull-detail').innerHTML = `LONG $${(longPrice/1000).toFixed(0)}K → SHORT $${(bullTarget/1000).toFixed(0)}K<br>12–18 tháng`;
+    document.getElementById('s-base').textContent = `+${baseReturn}%`;
+    document.getElementById('s-base-detail').innerHTML = `LONG $${(longPrice/1000).toFixed(0)}K → SHORT $${(baseTarget/1000).toFixed(0)}K<br>18–24 tháng`;
+    document.getElementById('s-bear').textContent = 'Rủi ro';
+    document.getElementById('s-bear-detail').innerHTML = `Không có ATH mới<br>hoặc SHORT quá sớm`;
+
+    // Alpha vs risk-free
+    const alpha = baseReturn - 15.6;
+    document.getElementById('tradeReturn').textContent = `+${baseReturn}%`;
+    document.getElementById('alphaReturn').textContent = `+${alpha.toFixed(1)}%`;
+
+    // Action Plan (dynamic)
+    const actions = [];
+    if (fgi <= 25 && btcFromATH <= -35) {
+      actions.push({ icon: '✅', cls: 'green', text: `<strong>Mua đợt ${Math.abs(btcFromATH) >= 44 ? '1/3' : '2/3'} ngay hôm nay:</strong> BTC ≈ ${fmtUSD(longPrice)}, FGI = ${fgi}. Đây là vùng tích lũy hợp lý theo lịch sử. Không all-in — chia đều 3 đợt.` });
+      actions.push({ icon: '⏳', cls: 'blue', text: `<strong>Đợt mua tiếp theo:</strong> Chờ FGI về dưới 10 hoặc BTC về $55K–$60K để mua đợt 2. Nếu không có, mua đợt 2 sau 30 ngày kể từ đợt 1.` });
+    } else if (fgi <= 45) {
+      actions.push({ icon: '👀', cls: 'yellow', text: `<strong>Quan sát thêm:</strong> FGI = ${fgi}, chưa đủ fearful. Chờ về dưới 25 mới bắt đầu tích lũy mạnh.` });
+    } else if (fgi >= 75) {
+      actions.push({ icon: '⚠️', cls: 'red', text: `<strong>Sẵn sàng SHORT:</strong> FGI = ${fgi}, cần theo dõi sát. Đặt alert khi BTC vượt $126K.` });
+    }
+
+    actions.push({ icon: '💰', cls: 'yellow', text: `<strong>Tiền chờ SHORT:</strong> Gửi <strong>OCB online</strong> hoặc <strong>Cake by VPBank</strong> — lãi ${opportunityCost}%/năm. Đừng để tiền idle khi chờ điều kiện SHORT.` });
+
+    if (M.fed_cuts_2026 >= 2) {
+      actions.push({ icon: '📅', cls: 'blue', text: `<strong>Catalyst trung hạn:</strong> Fed dự kiến cắt ${M.fed_cuts_2026} lần trong 2026 → dòng tiền sẽ quay lại tài sản rủi ro. BTC thường bật mạnh 3–6 tháng sau lần cắt đầu tiên.` });
+    }
+
+    actions.push({ icon: '🛡️', cls: 'red', text: `<strong>Risk management:</strong> Không dùng đòn bẩy, không vay ngân hàng để trade. Nếu BTC giảm về $45K sau khi đã mua, kiên nhẫn giữ — không cắt lỗ vì đây là chiến lược chu kỳ dài hạn.` });
+
+    actions.push({ icon: '📐', cls: 'blue', text: `<strong>Điều kiện SHORT (cụ thể):</strong> FGI ≥ 80 <em>VÀ</em> BTC vượt $${(BTC_ATH/1000).toFixed(0)}K <em>VÀ</em> giữ trên ATH ít nhất 3 ngày. Stop loss SHORT tại +20% từ entry.` });
+
+    document.getElementById('actionPlan').innerHTML = actions.map(a =>
+      `<li><div class="rec-icon ${a.cls}">${a.icon}</div><div>${a.text}</div></li>`
+    ).join('');
   }
 
   // ── DATE ──
@@ -511,28 +840,51 @@
     return d.bitcoin;
   }
 
-  // ── FETCH BTC 7D OHLC (CoinGecko) ──
+  // ── FETCH BTC 7D (CoinGecko với retry) ──
   async function fetchBTC7D() {
-    const r = await fetch(
-      'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7&interval=hourly',
-      { cache: 'no-store' }
-    );
-    const d = await r.json();
-    return d.prices; // [[timestamp, price], ...]
+    // Thử CoinGecko trước
+    try {
+      const r = await fetch(
+        'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7&interval=hourly',
+        { cache: 'no-store' }
+      );
+      if (!r.ok) throw new Error('rate limit');
+      const d = await r.json();
+      if (d.prices && d.prices.length > 0) return d.prices;
+      throw new Error('no data');
+    } catch(e) {
+      // Fallback: dùng data 7 ngày từ CoinGecko v2
+      const r2 = await fetch(
+        'https://api.coingecko.com/api/v3/coins/bitcoin/ohlc?vs_currency=usd&days=7',
+        { cache: 'no-store' }
+      );
+      const d2 = await r2.json();
+      // ohlc trả về [time, open, high, low, close]
+      return d2.map(c => [c[0], c[4]]);
+    }
   }
 
   // ── FETCH FEAR & GREED (Alternative.me) ──
   async function fetchFG() {
     const r = await fetch('https://api.alternative.me/fng/?limit=35', { cache: 'no-store' });
     const d = await r.json();
-    return d.data; // [{value, value_classification, timestamp}, ...]
+    return d.data;
   }
 
-  // ── FETCH GOLD (metals.live) ──
+  // ── FETCH GOLD (dùng PAX Gold trên CoinGecko — không bị CORS) ──
   async function fetchGold() {
-    const r = await fetch('https://api.metals.live/v1/spot/gold', { cache: 'no-store' });
+    // PAXG = PAX Gold, 1 PAXG = 1 troy oz vàng
+    const r = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true',
+      { cache: 'no-store' }
+    );
     const d = await r.json();
-    return d[0]; // {price: ..., prev_close: ...}
+    const paxg = d['pax-gold'];
+    return {
+      price: paxg.usd,
+      change: paxg.usd_24h_change,
+      prev_close_price: paxg.usd / (1 + paxg.usd_24h_change / 100)
+    };
   }
 
   // ── FETCH USD/VND ──
@@ -546,16 +898,19 @@
   let btcChartObj = null;
   let fgChartObj = null;
 
-  function renderBTCChart(prices) {
+  function renderBTCChart(currentPrice) {
     const ctx = document.getElementById('btcChart').getContext('2d');
-    const labels = prices.filter((_, i) => i % 4 === 0).map(p => {
-      const dt = new Date(p[0]);
-      return dt.getDate() + '/' + (dt.getMonth() + 1) + ' ' + dt.getHours() + 'h';
-    });
-    const data = prices.filter((_, i) => i % 4 === 0).map(p => p[1]);
+
+    // Dữ liệu chu kỳ BTC từ T10/2024 đến hiện tại
+    const labels = ['T10/24','T11/24','T12/24','T1/25','T2/25','T3/25','T4/25','T5/25','T6/25','T7/25','T8/25','T9/25','T10/25','T11/25','T12/25','T1/26','T2/26','T3/26'];
+    const data   = [67000, 88000, 98000, 102000, 96000, 90000, 85000, 95000, 102000, 108000, 111000, 119000, 126073, 105000, 95000, 80000, 68000, currentPrice || 71500];
+
+    // Màu điểm: đỏ = ATH (index 12), xanh = vùng LONG (index 16,17), cam = còn lại
+    const pointColors = data.map((_, i) => i === 12 ? '#ef4444' : (i >= 16 ? '#22c55e' : '#f7931a'));
+    const pointSizes  = data.map((_, i) => i === 12 || i >= 16 ? 8 : 3);
 
     const grad = ctx.createLinearGradient(0, 0, 0, 240);
-    grad.addColorStop(0, 'rgba(247,147,26,0.25)');
+    grad.addColorStop(0, 'rgba(247,147,26,0.2)');
     grad.addColorStop(1, 'rgba(247,147,26,0)');
 
     if (btcChartObj) btcChartObj.destroy();
@@ -563,28 +918,75 @@
       type: 'line',
       data: {
         labels,
-        datasets: [{
-          data,
-          borderColor: '#f7931a',
-          backgroundColor: grad,
-          borderWidth: 2,
-          pointRadius: 0,
-          fill: true,
-          tension: 0.4
-        }]
+        datasets: [
+          // Vùng LONG (nền xanh phần cuối)
+          {
+            data: data.map((v, i) => i >= 15 ? v : null),
+            borderColor: 'transparent',
+            backgroundColor: 'rgba(34,197,94,0.08)',
+            fill: true, pointRadius: 0, tension: 0.4
+          },
+          // Đường giá chính
+          {
+            label: 'BTC/USD',
+            data,
+            borderColor: '#f7931a',
+            backgroundColor: grad,
+            borderWidth: 2.5,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointRadius: pointSizes,
+            fill: false,
+            tension: 0.4
+          }
+        ]
       },
       options: {
         responsive: true,
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: { label: c => ' ' + fmtUSD(c.raw) }
+            callbacks: {
+              label: c => c.datasetIndex === 1 ? ' ' + fmtUSD(c.raw) : null,
+              afterLabel: c => {
+                if (c.datasetIndex !== 1) return null;
+                if (c.dataIndex === 12) return '🔴 ATH $126,073 — Vùng SHORT';
+                if (c.dataIndex >= 16) return '🟢 Extreme Fear — Vùng LONG';
+                return '';
+              }
+            },
+            filter: item => item.datasetIndex === 1
           }
         },
         scales: {
-          x: { grid: { color: 'rgba(37,42,58,0.5)' }, ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 8 } },
-          y: { grid: { color: 'rgba(37,42,58,0.5)' }, ticks: { color: '#64748b', font: { size: 10 }, callback: v => '$' + (v / 1000).toFixed(1) + 'K' } }
+          x: { grid: { color: 'rgba(37,42,58,0.4)' }, ticks: { color: '#64748b', font: { size: 10 } } },
+          y: {
+            grid: { color: 'rgba(37,42,58,0.4)' },
+            ticks: { color: '#64748b', font: { size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'K' }
+          }
         }
+      }
+    });
+
+    // Vẽ label ATH và LONG thủ công
+    Chart.register({
+      id: 'cycleLabels',
+      afterDraw(chart) {
+        if (chart.canvas.id !== 'btcChart') return;
+        const { ctx: c, chartArea: a, scales } = chart;
+        // Label ATH
+        const athX = scales.x.getPixelForValue(12);
+        const athY = scales.y.getPixelForValue(126073);
+        c.save();
+        c.fillStyle = 'rgba(239,68,68,0.85)';
+        c.font = 'bold 10px sans-serif';
+        c.fillText('ATH $126K', athX - 30, athY - 12);
+        // Label hiện tại
+        const nowX = scales.x.getPixelForValue(data.length - 1);
+        const nowY = scales.y.getPixelForValue(data[data.length - 1]);
+        c.fillStyle = 'rgba(34,197,94,0.85)';
+        c.fillText('Hiện tại', nowX - 24, nowY - 12);
+        c.restore();
       }
     });
   }
@@ -648,8 +1050,7 @@
 
   function updateGold(gold, usdvnd) {
     const price = gold.price;
-    const prev = gold.prev_close_price ?? gold.prev_price ?? price;
-    const change = ((price - prev) / prev * 100);
+    const change = gold.change ?? 0;
 
     document.getElementById('goldPrice').textContent = fmtUSD(price);
 
@@ -711,14 +1112,21 @@
       fetchBTC(),
       fetchFG(),
       fetchGold(),
-      fetchUSDVND(),
-      fetchBTC7D()
+      fetchUSDVND()
     ]);
 
-    const [btcR, fgR, goldR, vndR, btc7dR] = results;
+    const [btcR, fgR, goldR, vndR] = results;
 
-    if (btcR.status === 'fulfilled') updateBTC(btcR.value);
-    else document.getElementById('btcPrice').textContent = 'Lỗi API';
+    if (btcR.status === 'fulfilled') {
+      updateBTC(btcR.value);
+      renderBTCChart(btcR.value.usd); // truyền giá hiện tại vào chart chu kỳ
+    } else {
+      document.getElementById('btcPrice').textContent = 'Lỗi API';
+      renderBTCChart(null);
+    }
+
+    const fgVal = fgR.status === 'fulfilled' ? Number(fgR.value[0].value) : 15;
+    const usdvndVal = vndR.status === 'fulfilled' ? vndR.value : null;
 
     if (fgR.status === 'fulfilled') {
       updateFG(fgR.value);
@@ -726,12 +1134,15 @@
     }
 
     if (goldR.status === 'fulfilled') {
-      updateGold(goldR.value, vndR.status === 'fulfilled' ? vndR.value : null);
+      updateGold(goldR.value, usdvndVal);
     } else {
       document.getElementById('goldPrice').textContent = 'Lỗi API';
     }
 
-    if (btc7dR.status === 'fulfilled') renderBTCChart(btc7dR.value);
+    // ── AI MACRO ANALYSIS ──
+    const btcPrice = btcR.status === 'fulfilled' ? btcR.value.usd : 71500;
+    const analysis = runMacroAnalysis(btcPrice, fgVal, null, usdvndVal);
+    renderAnalysis(analysis, fgVal, usdvndVal);
 
     const now = new Date();
     document.getElementById('lastUpdated').textContent =
