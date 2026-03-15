@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Whale Dashboard — Trade Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --surface: #151821;
+      --surface2: #1c2030;
+      --border: #252a3a;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --orange: #f97316;
+      --teal: #14b8a6;
+      --fear-extreme: #ef4444;
+      --fear: #f97316;
+      --neutral: #eab308;
+      --greed: #22c55e;
+      --greed-extreme: #16a34a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #3b82f6, #a855f7);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .logo h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .logo span { color: var(--muted); font-size: 13px; font-weight: 400; display: block; }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    .live-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px; font-weight: 600; color: var(--green);
+    }
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+
+    .date-badge {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 13px; color: var(--muted);
+    }
+
+    /* ── GRID ── */
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .grid-7030 {
+      display: grid;
+      grid-template-columns: 70% 30%;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 1200px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .grid-4, .grid-3, .grid-2, .grid-7030 { grid-template-columns: 1fr; }
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #334155; }
+
+    .card-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .card-value {
+      font-size: 28px; font-weight: 700;
+      letter-spacing: -0.5px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .card-sub {
+      font-size: 12px; color: var(--muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .change-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 8px; border-radius: 6px;
+      font-size: 12px; font-weight: 600;
+    }
+    .change-badge.up { background: rgba(34,197,94,0.15); color: var(--green); }
+    .change-badge.down { background: rgba(239,68,68,0.15); color: var(--red); }
+    .change-badge.neutral { background: rgba(234,179,8,0.15); color: var(--yellow); }
+
+    .card-icon {
+      position: absolute; top: 16px; right: 16px;
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    /* ── FEAR & GREED ── */
+    .fg-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .fg-card h2 {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 20px;
+    }
+
+    .gauge-wrap { position: relative; width: 200px; margin: 0 auto 16px; }
+    .gauge-svg { width: 100%; }
+
+    .fg-number {
+      text-align: center;
+      font-size: 52px; font-weight: 800;
+      color: var(--fear-extreme);
+      line-height: 1; margin-bottom: 4px;
+    }
+    .fg-label {
+      text-align: center;
+      font-size: 14px; font-weight: 600;
+      color: var(--fear-extreme);
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    .fg-bar {
+      display: flex; border-radius: 6px; overflow: hidden;
+      height: 6px; margin: 20px 0 8px;
+    }
+    .fg-bar-seg { flex: 1; }
+    .fg-bar-indicator-wrap { position: relative; }
+    .fg-scale {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: var(--muted);
+    }
+
+    .fg-history {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 8px; margin-top: 20px;
+    }
+    .fg-hist-item {
+      background: var(--surface2);
+      border-radius: 8px; padding: 8px;
+      text-align: center;
+    }
+    .fg-hist-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+    .fg-hist-val { font-size: 16px; font-weight: 700; }
+
+    /* ── INTEREST RATE TABLE ── */
+    .rate-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .rate-card h2 {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .rate-card h2 span { font-size: 16px; }
+
+    .rate-table { width: 100%; border-collapse: collapse; }
+    .rate-table th {
+      text-align: left;
+      font-size: 10px; font-weight: 600; color: var(--muted);
+      letter-spacing: 0.5px; text-transform: uppercase;
+      padding: 0 0 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rate-table td {
+      padding: 10px 0;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(37,42,58,0.5);
+    }
+    .rate-table tr:last-child td { border-bottom: none; }
+    .rate-table td:last-child { text-align: right; font-weight: 600; }
+    .rate-highlight { color: var(--green); font-size: 14px !important; }
+
+    /* ── STRATEGY ── */
+    .strategy-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .strategy-card h2 {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 20px;
+    }
+
+    .cycle-viz {
+      display: flex; align-items: center; gap: 0;
+      margin-bottom: 24px; position: relative;
+    }
+    .cycle-step {
+      flex: 1; text-align: center; position: relative;
+    }
+    .cycle-dot {
+      width: 48px; height: 48px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 8px;
+      font-size: 20px;
+      position: relative; z-index: 2;
+    }
+    .cycle-dot.fear-dot { background: rgba(239,68,68,0.2); border: 2px solid var(--red); }
+    .cycle-dot.neutral-dot { background: rgba(100,116,139,0.2); border: 2px dashed var(--muted); }
+    .cycle-dot.greed-dot { background: rgba(234,179,8,0.2); border: 2px solid var(--yellow); }
+    .cycle-dot.active { box-shadow: 0 0 0 6px rgba(239,68,68,0.2); }
+
+    .cycle-label { font-size: 11px; color: var(--muted); }
+    .cycle-val { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+    .cycle-line {
+      position: absolute; top: 23px; left: 0; right: 0;
+      height: 2px; background: var(--border); z-index: 1;
+    }
+    .cycle-line-filled {
+      height: 100%; background: linear-gradient(to right, var(--red), var(--border));
+      width: 30%;
+    }
+
+    .scenarios {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      margin-bottom: 20px;
+    }
+    .scenario {
+      background: var(--surface2);
+      border-radius: 12px; padding: 14px;
+      border-left: 3px solid;
+    }
+    .scenario.bull { border-color: var(--green); }
+    .scenario.base { border-color: var(--blue); }
+    .scenario.bear { border-color: var(--red); }
+    .scenario-label { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+    .scenario-return { font-size: 22px; font-weight: 800; }
+    .scenario.bull .scenario-return { color: var(--green); }
+    .scenario.base .scenario-return { color: var(--blue); }
+    .scenario.bear .scenario-return { color: var(--red); }
+    .scenario-detail { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+    .rec-list { list-style: none; }
+    .rec-list li {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(37,42,58,0.5);
+      font-size: 13px; line-height: 1.5;
+    }
+    .rec-list li:last-child { border-bottom: none; }
+    .rec-icon {
+      min-width: 24px; height: 24px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+    .rec-icon.green { background: rgba(34,197,94,0.15); }
+    .rec-icon.yellow { background: rgba(234,179,8,0.15); }
+    .rec-icon.red { background: rgba(239,68,68,0.15); }
+    .rec-icon.blue { background: rgba(59,130,246,0.15); }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      letter-spacing: 1px; text-transform: uppercase;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .section-title::before {
+      content: ''; width: 3px; height: 14px;
+      background: linear-gradient(to bottom, #3b82f6, #a855f7);
+      border-radius: 2px; display: block;
+    }
+
+    /* ── CHART CARD ── */
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .chart-card h2 {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .chart-tabs {
+      display: flex; gap: 4px;
+    }
+    .chart-tab {
+      padding: 3px 10px; border-radius: 6px; font-size: 11px;
+      cursor: pointer; border: 1px solid var(--border);
+      background: transparent; color: var(--muted);
+      transition: all 0.15s;
+    }
+    .chart-tab.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+    /* ── SIGNAL BOX ── */
+    .signal-box {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 12px; padding: 16px;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .signal-icon { font-size: 24px; }
+    .signal-title { font-size: 14px; font-weight: 700; color: var(--red); margin-bottom: 4px; }
+    .signal-body { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    /* ── GOLD TABLE ── */
+    .gold-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid rgba(37,42,58,0.5);
+    }
+    .gold-row:last-child { border-bottom: none; }
+    .gold-name { font-size: 13px; }
+    .gold-prices { display: flex; gap: 16px; text-align: right; }
+    .gold-price-col { }
+    .gold-price-label { font-size: 10px; color: var(--muted); }
+    .gold-price-val { font-size: 14px; font-weight: 700; }
+
+    /* ── HURDLE RATE ── */
+    .hurdle {
+      background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(168,85,247,0.1));
+      border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 12px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      margin-top: 12px;
+    }
+    .hurdle-icon { font-size: 20px; }
+    .hurdle-text { font-size: 12px; line-height: 1.5; }
+    .hurdle-text strong { color: var(--blue); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🐋</div>
+    <div>
+      <h1>Whale Dashboard</h1>
+      <span>Trade Monitor — Bảo toàn tài sản</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="date-badge" id="dateDisplay">15/03/2026</div>
+  </div>
+</div>
+
+<!-- ── ROW 1: KEY METRICS ── -->
+<div class="grid-4" style="margin-bottom:20px">
+
+  <!-- BTC -->
+  <div class="card">
+    <div class="card-icon" style="background:rgba(247,147,26,0.15)">₿</div>
+    <div class="card-label">Bitcoin (BTC/USD)</div>
+    <div class="card-value" style="color:#f7931a">$71,428</div>
+    <div class="card-sub">
+      <span class="change-badge up">▲ +1.2%</span>
+      <span>24h • Vol $22.7B</span>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+      ATH: $126,073 &nbsp;•&nbsp; <span style="color:var(--red)">-43.4% từ ATH</span>
+    </div>
+  </div>
+
+  <!-- Vàng SJC -->
+  <div class="card">
+    <div class="card-icon" style="background:rgba(234,179,8,0.15)">🥇</div>
+    <div class="card-label">Vàng SJC (mua / bán)</div>
+    <div class="card-value" style="color:#eab308;font-size:22px">179.6 / 182.6</div>
+    <div class="card-sub">
+      <span class="change-badge down">▼ -2.4M</span>
+      <span>triệu đồng/lượng</span>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+      Thế giới: $5,019/oz
+    </div>
+  </div>
+
+  <!-- Lãi suất gửi -->
+  <div class="card">
+    <div class="card-icon" style="background:rgba(34,197,94,0.15)">🏦</div>
+    <div class="card-label">Lãi suất tiền gửi cao nhất</div>
+    <div class="card-value" style="color:#22c55e">8.4%<span style="font-size:14px;font-weight:400;color:var(--muted)">/năm</span></div>
+    <div class="card-sub">
+      <span style="color:var(--muted)">OCB online • ≥500M</span>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+      Big4: 5.2%–5.3% &nbsp;•&nbsp; TB thị trường ~7%
+    </div>
+  </div>
+
+  <!-- Lãi suất vay -->
+  <div class="card">
+    <div class="card-icon" style="background:rgba(239,68,68,0.15)">💳</div>
+    <div class="card-label">Lãi suất vay mua nhà</div>
+    <div class="card-value" style="color:#ef4444">7.95%<span style="font-size:14px;font-weight:400;color:var(--muted)">/năm</span></div>
+    <div class="card-sub">
+      <span style="color:var(--muted)">Shinhan Bank • cố định 12T</span>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+      Cao nhất: ~15% (thả nổi)
+    </div>
+  </div>
+
+</div>
+
+<!-- ── ROW 2: FEAR & GREED + CHART ── -->
+<div class="grid-7030" style="margin-bottom:20px">
+
+  <!-- BTC Cycle Chart -->
+  <div class="chart-card">
+    <h2>
+      <span>Chu kỳ BTC / Chiến lược vào lệnh</span>
+      <div class="chart-tabs">
+        <button class="chart-tab active" onclick="switchChart('btc',this)">BTC</button>
+        <button class="chart-tab" onclick="switchChart('fg',this)">F&G</button>
+      </div>
+    </h2>
+    <canvas id="btcChart" height="100"></canvas>
+    <canvas id="fgChart" height="100" style="display:none"></canvas>
+    <div style="display:flex;gap:20px;margin-top:12px;font-size:11px;color:var(--muted)">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block"></span>Vùng LONG (Extreme Fear)</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block"></span>Vùng SHORT (ATH/Extreme Greed)</span>
+    </div>
+  </div>
+
+  <!-- Fear & Greed -->
+  <div class="fg-card">
+    <h2>Fear &amp; Greed Index</h2>
+
+    <div class="fg-number">15</div>
+    <div class="fg-label">Extreme Fear</div>
+
+    <div style="margin-top:16px">
+      <div class="fg-bar">
+        <div class="fg-bar-seg" style="background:#ef4444"></div>
+        <div class="fg-bar-seg" style="background:#f97316"></div>
+        <div class="fg-bar-seg" style="background:#eab308"></div>
+        <div class="fg-bar-seg" style="background:#22c55e"></div>
+        <div class="fg-bar-seg" style="background:#16a34a"></div>
+      </div>
+      <!-- Indicator -->
+      <div style="position:relative;height:10px">
+        <div style="position:absolute;left:calc(15% - 6px);top:0;width:12px;height:12px;border-radius:50%;background:white;border:2px solid var(--fear-extreme);transform:translateY(-4px)"></div>
+      </div>
+      <div class="fg-scale" style="margin-top:4px">
+        <span>Sợ cực</span><span>Sợ</span><span>Trung tính</span><span>Tham</span><span>Tham cực</span>
+      </div>
+    </div>
+
+    <div class="fg-history">
+      <div class="fg-hist-item">
+        <div class="fg-hist-label">Hôm nay</div>
+        <div class="fg-hist-val" style="color:#ef4444">15</div>
+      </div>
+      <div class="fg-hist-item">
+        <div class="fg-hist-label">Hôm qua</div>
+        <div class="fg-hist-val" style="color:#ef4444">26</div>
+      </div>
+      <div class="fg-hist-item">
+        <div class="fg-hist-label">7 ngày</div>
+        <div class="fg-hist-val" style="color:#ef4444">23</div>
+      </div>
+      <div class="fg-hist-item">
+        <div class="fg-hist-label">Đáy 2026</div>
+        <div class="fg-hist-val" style="color:#ef4444">5</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px;font-size:11px;color:var(--muted);line-height:1.6">
+      🔴 <strong style="color:var(--red)">38 ngày</strong> liên tiếp Extreme Fear — dài nhất kể từ Terra/Luna 2022
+    </div>
+  </div>
+
+</div>
+
+<!-- ── ROW 3: RATES ── -->
+<div class="grid-2" style="margin-bottom:20px">
+
+  <!-- Tiền gửi -->
+  <div class="rate-card">
+    <h2><span>💰</span> Lãi suất tiền gửi — Tháng 3/2026</h2>
+    <table class="rate-table">
+      <thead>
+        <tr>
+          <th>Ngân hàng</th>
+          <th>Kỳ hạn</th>
+          <th>Lãi suất</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>OCB (online ≥500M)</td>
+          <td style="color:var(--muted)">36 tháng</td>
+          <td class="rate-highlight">8.4%</td>
+        </tr>
+        <tr>
+          <td>Cake by VPBank</td>
+          <td style="color:var(--muted)">≥6 tháng</td>
+          <td class="rate-highlight">8.2%</td>
+        </tr>
+        <tr>
+          <td>Vikki Bank</td>
+          <td style="color:var(--muted)">13 tháng</td>
+          <td style="color:var(--green)">7.69%</td>
+        </tr>
+        <tr>
+          <td>HLBank</td>
+          <td style="color:var(--muted)">Kỳ hạn dài</td>
+          <td style="color:var(--green)">7.4%</td>
+        </tr>
+        <tr>
+          <td>PGBank / MBV</td>
+          <td style="color:var(--muted)">≥12 tháng</td>
+          <td style="color:var(--green)">7.2%</td>
+        </tr>
+        <tr>
+          <td>VIB</td>
+          <td style="color:var(--muted)">12 tháng</td>
+          <td style="color:var(--yellow)">6.5%</td>
+        </tr>
+        <tr>
+          <td>Vietcombank Big4</td>
+          <td style="color:var(--muted)">≥24 tháng</td>
+          <td style="color:var(--muted)">5.3%</td>
+        </tr>
+        <tr>
+          <td>Agribank Big4</td>
+          <td style="color:var(--muted)">≥24 tháng</td>
+          <td style="color:var(--muted)">5.3%</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="hurdle">
+      <div class="hurdle-icon">🎯</div>
+      <div class="hurdle-text">
+        <strong>Hurdle rate (phi rủi ro):</strong> ~7–8.4%/năm<br>
+        Chiến lược trade phải đánh bại mức này để hợp lý
+      </div>
+    </div>
+  </div>
+
+  <!-- Vay -->
+  <div class="rate-card">
+    <h2><span>🏠</span> Lãi suất vay — Tháng 3/2026</h2>
+    <table class="rate-table">
+      <thead>
+        <tr>
+          <th>Ngân hàng / Loại</th>
+          <th>Ưu đãi</th>
+          <th>Lãi suất</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Shinhan Bank (nước ngoài)</td>
+          <td style="color:var(--muted)">Cố định 12T</td>
+          <td style="color:var(--green)">7.95%</td>
+        </tr>
+        <tr>
+          <td>MB Bank</td>
+          <td style="color:var(--muted)">Cố định 12T</td>
+          <td style="color:var(--green)">8.5%</td>
+        </tr>
+        <tr>
+          <td>Techcombank</td>
+          <td style="color:var(--muted)">6–12 tháng</td>
+          <td style="color:var(--yellow)">8.5–9.5%</td>
+        </tr>
+        <tr>
+          <td>ACB</td>
+          <td style="color:var(--muted)">Cố định 12T</td>
+          <td style="color:var(--yellow)">8.3–10.5%</td>
+        </tr>
+        <tr>
+          <td>Agribank</td>
+          <td style="color:var(--muted)">Cố định 12T</td>
+          <td style="color:var(--orange)">8.0–9.8%</td>
+        </tr>
+        <tr>
+          <td>Vietcombank</td>
+          <td style="color:var(--muted)">Cố định 24T</td>
+          <td style="color:var(--red)">13.9%</td>
+        </tr>
+        <tr>
+          <td>Thả nổi (TB)</td>
+          <td style="color:var(--muted)">Sau ưu đãi</td>
+          <td style="color:var(--red)">11–15%</td>
+        </tr>
+        <tr>
+          <td>Vay tiêu dùng tín chấp</td>
+          <td style="color:var(--muted)">—</td>
+          <td style="color:var(--red)">7–21%</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.2);border-radius:8px;padding:10px;font-size:11px;color:var(--muted);line-height:1.6">
+      ⚠️ Lãi suất vay mua nhà đang ở <strong style="color:var(--yellow)">mức cao nhất 2 năm</strong>. Tránh vay để trade crypto trong môi trường lãi suất cao.
+    </div>
+  </div>
+
+</div>
+
+<!-- ── ROW 4: STRATEGY ANALYSIS ── -->
+<div class="strategy-card" style="margin-bottom:20px">
+  <h2>Phân tích chiến lược: 1 LONG (Extreme Fear) + 1 SHORT (ATH) / chu kỳ</h2>
+
+  <!-- Cycle Viz -->
+  <div style="position:relative;margin-bottom:28px">
+    <div class="cycle-line"><div class="cycle-line-filled"></div></div>
+    <div class="cycle-viz">
+      <div class="cycle-step">
+        <div class="cycle-dot fear-dot active">😨</div>
+        <div class="cycle-label">Extreme Fear</div>
+        <div class="cycle-val" style="color:var(--red)">FGI: 5–25</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">👆 LONG tại đây</div>
+        <div style="margin-top:6px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:6px;padding:6px;font-size:11px;text-align:center">
+          <span style="color:var(--green)">Hiện tại: FGI=15<br>BTC≈$71K</span>
+        </div>
+      </div>
+      <div class="cycle-step">
+        <div class="cycle-dot neutral-dot">📈</div>
+        <div class="cycle-label">Phục hồi</div>
+        <div class="cycle-val" style="color:var(--muted)">FGI: 40–60</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">⏳ Đang chờ</div>
+      </div>
+      <div class="cycle-step">
+        <div class="cycle-dot greed-dot">🚀</div>
+        <div class="cycle-label">Bull Peak / ATH</div>
+        <div class="cycle-val" style="color:var(--yellow)">FGI: 75–100</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">👇 SHORT tại đây</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scenarios -->
+  <div class="section-title">Kịch bản lợi nhuận (tính cho 1 chu kỳ)</div>
+  <div class="scenarios">
+    <div class="scenario bull">
+      <div class="scenario-label">🟢 Lạc quan</div>
+      <div class="scenario-return">+130%</div>
+      <div class="scenario-detail">
+        LONG $65K → SHORT $150K<br>
+        Giữ 12–18 tháng
+      </div>
+    </div>
+    <div class="scenario base">
+      <div class="scenario-label">🔵 Cơ sở</div>
+      <div class="scenario-return">+71%</div>
+      <div class="scenario-detail">
+        LONG $70K → SHORT $120K<br>
+        Giữ 18–24 tháng
+      </div>
+    </div>
+    <div class="scenario bear">
+      <div class="scenario-label">🔴 Bi quan</div>
+      <div class="scenario-return">Rủi ro</div>
+      <div class="scenario-detail">
+        Không có ATH mới<br>
+        Hoặc short quá sớm
+      </div>
+    </div>
+  </div>
+
+  <!-- So sánh với gửi tiết kiệm -->
+  <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="color:var(--muted);font-size:11px;margin-bottom:4px">Gửi ngân hàng 7.5%/năm × 2 năm (phi rủi ro)</div>
+        <div style="font-size:20px;font-weight:700;color:var(--muted)">+15.6%</div>
+      </div>
+      <div style="color:var(--muted);font-size:20px">VS</div>
+      <div>
+        <div style="color:var(--muted);font-size:11px;margin-bottom:4px">Chiến lược trade (kịch bản cơ sở)</div>
+        <div style="font-size:20px;font-weight:700;color:var(--blue)">+71%</div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:11px;margin-bottom:4px">Alpha so với phi rủi ro</div>
+        <div style="font-size:20px;font-weight:700;color:var(--green)">+55.4%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Khuyến nghị -->
+  <div class="section-title">Khuyến nghị hôm nay</div>
+  <ul class="rec-list">
+    <li>
+      <div class="rec-icon green">✅</div>
+      <div><strong>Vùng LONG hợp lý:</strong> BTC ≈$71K, FGI=15 đang trong vùng Extreme Fear kéo dài. Có thể chia 3 lần mua (DCA) thay vì all-in để phòng ngừa trường hợp BTC giảm tiếp về $55–60K.</div>
+    </li>
+    <li>
+      <div class="rec-icon yellow">💰</div>
+      <div><strong>Tiền chờ (phần SHORT):</strong> Gửi OCB hoặc Cake 8.2–8.4%/năm. Không để idle — lãi suất phi rủi ro đang rất hấp dẫn.</div>
+    </li>
+    <li>
+      <div class="rec-icon blue">📐</div>
+      <div><strong>Điều kiện SHORT:</strong> FGI ≥ 80 VÀ BTC vượt ATH cũ ($126K) thì mới xem xét short. Cần đặt stop loss +15% để kiểm soát rủi ro.</div>
+    </li>
+    <li>
+      <div class="rec-icon red">⚠️</div>
+      <div><strong>Tuyệt đối không vay ngân hàng để trade:</strong> Lãi suất vay 8.5–15%/năm — rủi ro thanh lý nếu BTC dao động mạnh sẽ ăn mòn toàn bộ vốn.</div>
+    </li>
+  </ul>
+</div>
+
+<!-- ── ROW 5: GOLD DETAIL ── -->
+<div class="rate-card" style="margin-bottom:20px">
+  <h2><span>🏅</span> Chi tiết giá vàng — 15/03/2026</h2>
+  <div class="gold-row">
+    <div>
+      <div class="gold-name">Vàng miếng SJC</div>
+      <div style="font-size:11px;color:var(--muted)">Giảm 2.4M so với tuần trước</div>
+    </div>
+    <div class="gold-prices">
+      <div class="gold-price-col">
+        <div class="gold-price-label">Mua vào</div>
+        <div class="gold-price-val" style="color:var(--green)">179.6M</div>
+      </div>
+      <div class="gold-price-col">
+        <div class="gold-price-label">Bán ra</div>
+        <div class="gold-price-val" style="color:var(--red)">182.6M</div>
+      </div>
+      <div class="gold-price-col">
+        <div class="gold-price-label">Spread</div>
+        <div class="gold-price-val" style="color:var(--muted)">3.0M</div>
+      </div>
+    </div>
+  </div>
+  <div class="gold-row">
+    <div>
+      <div class="gold-name">Vàng nhẫn SJC (1–5 chỉ)</div>
+      <div style="font-size:11px;color:var(--muted)">Bảo Tín Minh Châu mua cao hơn miếng</div>
+    </div>
+    <div class="gold-prices">
+      <div class="gold-price-col">
+        <div class="gold-price-label">Mua vào</div>
+        <div class="gold-price-val" style="color:var(--green)">179.3M</div>
+      </div>
+      <div class="gold-price-col">
+        <div class="gold-price-label">Bán ra</div>
+        <div class="gold-price-val" style="color:var(--red)">182.3M</div>
+      </div>
+      <div class="gold-price-col">
+        <div class="gold-price-label">Spread</div>
+        <div class="gold-price-val" style="color:var(--muted)">3.0M</div>
+      </div>
+    </div>
+  </div>
+  <div class="gold-row">
+    <div>
+      <div class="gold-name">Vàng nhẫn DOJI</div>
+      <div style="font-size:11px;color:var(--muted)">—</div>
+    </div>
+    <div class="gold-prices">
+      <div class="gold-price-col">
+        <div class="gold-price-label">Mua vào</div>
+        <div class="gold-price-val" style="color:var(--green)">179.6M</div>
+      </div>
+      <div class="gold-price-col">
+        <div class="gold-price-label">Bán ra</div>
+        <div class="gold-price-val" style="color:var(--red)">182.6M</div>
+      </div>
+      <div class="gold-price-col">
+        <div class="gold-price-label">Spread</div>
+        <div class="gold-price-val" style="color:var(--muted)">3.0M</div>
+      </div>
+    </div>
+  </div>
+  <div class="gold-row">
+    <div>
+      <div class="gold-name">Vàng thế giới (XAU/USD)</div>
+      <div style="font-size:11px;color:var(--muted)">Comex April 2026: $5,023</div>
+    </div>
+    <div class="gold-prices">
+      <div class="gold-price-col">
+        <div class="gold-price-label">Giao ngay</div>
+        <div class="gold-price-val" style="color:var(--yellow)">$5,019/oz</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<div style="text-align:center;color:var(--muted);font-size:11px;padding:16px 0;border-top:1px solid var(--border)">
+  Cập nhật lần cuối: 15/03/2026 &nbsp;•&nbsp; Dữ liệu mang tính tham khảo, không phải tư vấn đầu tư &nbsp;•&nbsp; 🐋 Whale Dashboard
+</div>
+
+<script>
+  // ── DATE ──
+  const d = new Date();
+  document.getElementById('dateDisplay').textContent =
+    d.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  // ── BTC CHART ──
+  const btcLabels = ['T10/24','T12/24','T2/25','T4/25','T6/25','T8/25','T10/25','T12/25','T2/26','T3/26'];
+  const btcData   = [67000, 98000, 96000, 85000, 102000, 111000, 126073, 95000, 68000, 71428];
+
+  const btcCtx = document.getElementById('btcChart').getContext('2d');
+
+  const gradient = btcCtx.createLinearGradient(0, 0, 0, 260);
+  gradient.addColorStop(0, 'rgba(247,147,26,0.25)');
+  gradient.addColorStop(1, 'rgba(247,147,26,0)');
+
+  const btcChart = new Chart(btcCtx, {
+    type: 'line',
+    data: {
+      labels: btcLabels,
+      datasets: [{
+        label: 'BTC/USD',
+        data: btcData,
+        borderColor: '#f7931a',
+        backgroundColor: gradient,
+        borderWidth: 2,
+        pointRadius: 4,
+        pointBackgroundColor: btcData.map((v,i) => {
+          if (i === 6) return '#ef4444'; // ATH
+          if (i >= 8) return '#22c55e';  // vùng long
+          return '#f7931a';
+        }),
+        pointBorderColor: btcData.map((v,i) => {
+          if (i === 6) return '#ef4444';
+          if (i >= 8) return '#22c55e';
+          return '#f7931a';
+        }),
+        pointRadius: btcData.map((v,i) => (i === 6 || i >= 8) ? 7 : 4),
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' $' + ctx.raw.toLocaleString(),
+            afterLabel: ctx => {
+              if (ctx.dataIndex === 6) return '🔴 ATH — Vùng SHORT';
+              if (ctx.dataIndex >= 8) return '🟢 Vùng LONG (Extreme Fear)';
+              return '';
+            }
+          }
+        },
+        annotation: {}
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(37,42,58,0.5)' },
+          ticks: { color: '#64748b', font: { size: 11 } }
+        },
+        y: {
+          grid: { color: 'rgba(37,42,58,0.5)' },
+          ticks: {
+            color: '#64748b', font: { size: 11 },
+            callback: v => '$' + (v/1000).toFixed(0) + 'K'
+          }
+        }
+      }
+    }
+  });
+
+  // ── FG CHART ──
+  const fgCtx = document.getElementById('fgChart').getContext('2d');
+  const fgData = [55, 72, 68, 45, 80, 88, 95, 60, 5, 15];
+
+  const fgChart = new Chart(fgCtx, {
+    type: 'bar',
+    data: {
+      labels: btcLabels,
+      datasets: [{
+        label: 'Fear & Greed Index',
+        data: fgData,
+        backgroundColor: fgData.map(v => {
+          if (v <= 25) return 'rgba(239,68,68,0.8)';
+          if (v <= 45) return 'rgba(249,115,22,0.8)';
+          if (v <= 55) return 'rgba(234,179,8,0.8)';
+          if (v <= 75) return 'rgba(34,197,94,0.8)';
+          return 'rgba(22,163,74,0.8)';
+        }),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { color: 'rgba(37,42,58,0.5)' },
+          ticks: { color: '#64748b', font: { size: 11 } }
+        },
+        y: {
+          grid: { color: 'rgba(37,42,58,0.5)' },
+          ticks: { color: '#64748b', font: { size: 11 } },
+          min: 0, max: 100
+        }
+      }
+    }
+  });
+
+  // ── CHART SWITCH ──
+  function switchChart(type, btn) {
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    if (type === 'btc') {
+      document.getElementById('btcChart').style.display = '';
+      document.getElementById('fgChart').style.display = 'none';
+    } else {
+      document.getElementById('btcChart').style.display = 'none';
+      document.getElementById('fgChart').style.display = '';
+    }
+  }
+</script>
+</body>
+</html>
